@@ -1,0 +1,59 @@
+@startuml ShopHub_Data_Flow
+
+' Styling configuration for a clean modern look
+skinparam BackgroundColor #FFFFFF
+skinparam componentStyle uml2
+skinparam BoxPadding 10
+skinparam ParticipantPadding 10
+
+title ShopHub End-to-End Application Data Flow
+
+actor "Customer / Admin" as User #LightBlue
+
+box "Frontend Layer (Client)" #LightCyan
+    participant "React 18 SPA\n(Vite, Tailwind, Recharts)" as UI
+end box
+
+box "Security & Backend Router (Server)" #Lavender
+    participant "Express Security Middleware\n(Helmet, CORS, Rate-Limit)" as Security
+    participant "Express API Router\n(Controllers & Auth Logic)" as API
+end box
+
+box "Database & Services" #LightYellow
+    database "MongoDB Atlas\n(Mongoose 8)" as DB
+    collections "External Services SDK\n(Gemini AI / Stripe / SendGrid)" as Services
+end box
+
+' Execution Steps
+User -> UI : Interacts with Storefront / Admin Suite
+activate UI
+
+UI -> Security : 1. HTTP / REST API Request (Axios with JWT Bearer Token)
+activate Security
+
+Security -> API : 2. Passes Firewall Filters (Validates JWT, Rates, & Joi Payloads)
+deactivate Security
+activate API
+
+API -> DB : 3. Executes Queries / Mutations (CRUD Products, Orders, Analytics)
+activate DB
+DB --> API : Returns Database Documents
+deactivate DB
+
+API -> Services : 4. Third-Party API Orchestration
+activate Services
+note over Services
+    * Gemini AI: Conversational Chat / AI Descriptions
+    * Stripe / Razorpay: Idempotent Webhooks & Payments
+    * SendGrid: Secure SMTP OTP Verification
+end note
+Services --> API : Returns External Payload Sync
+deactivate Services
+
+API --> UI : 5. Responds with JSON Block (200 OK / Structured Response)
+deactivate API
+
+UI --> User : Renders Visual Changes (Recharts / UI Updates)
+deactivate UI
+
+@enduml

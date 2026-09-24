@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7-jammy
+    container_name: shophub-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: ecommerce
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - shophub-network
+
+  backend:
+    build:
+      context: ./ecommerce-backend
+      dockerfile: Dockerfile
+    container_name: shophub-backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      MONGODB_URI: mongodb://mongodb:27017/ecommerce
+      JWT_SECRET: shophub_super_secret_jwt_key_1234567890
+      FRONTEND_URL: http://localhost:80
+      ALLOWED_ORIGINS: http://localhost:80,http://localhost:5173
+    depends_on:
+      - mongodb
+    networks:
+      - shophub-network
+
+  frontend:
+    build:
+      context: ./ecommerce-frontend
+      dockerfile: Dockerfile
+    container_name: shophub-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - shophub-network
+'volumes:
+  mongodb_data:
+    driver: local
+
+networks:
+  shophub-network:
+    driver: bridge

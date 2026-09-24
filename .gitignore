@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+*/node_modules/
+ecommerce-backend/node_modules/
+ecommerce-frontend/node_modules/
+
+# Environment variables & secrets
+.env
+.env.*
+!.env.example
+ecommerce-backend/.env
+ecommerce-backend/.env.*
+!ecommerce-backend/.env.example
+!ecommerce-backend/.env.test
+ecommerce-frontend/.env
+ecommerce-frontend/.env.*
+!ecommerce-frontend/.env.example
+
+# Credentials and sensitive documents
+important credentials.docx
+*.docx
+
+# Build artifacts
+dist/
+build/
+*/dist/
+ecommerce-frontend/dist/
+
+# Logs & system files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+Thumbs.db

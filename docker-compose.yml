@@ -46,7 +46,7 @@ services:
       - backend
     networks:
       - shophub-network
-'volumes:
+volumes:
   mongodb_data:
     driver: local
 

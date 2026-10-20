@@ -5,7 +5,7 @@
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen.svg)](https://nodejs.org/)
 [![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://opensource.org/licenses/ISC)
 
-A production-ready, full-stack MERN e-commerce platform engineered with a high-performance **React 18 (Vite)** frontend, a secure **Node.js/Express** REST API backend, and dual database support for **Local MongoDB Community Server** and **MongoDB Atlas (Cloud)**. Features executive **Recharts visual analytics**, integrated **Google Gemini AI** (conversational shopping assistant & SEO marketing generator), dual payment gateways (**Stripe & Razorpay**), automated **GitHub Actions CI/CD**, multi-provider email dispatch (**Resend HTTPS API / SendGrid / Gmail SMTP** with server log OTP fallback), and **Docker** containerization.
+A production-ready, full-stack MERN e-commerce platform engineered with a high-performance **React 18 (Vite)** frontend, a secure **Node.js/Express** REST API backend with **Socket.io real-time WebSockets**, a **Redis in-memory caching layer**, and dual database architecture supporting **Local MongoDB Community Server** and **MongoDB Atlas (Cloud)**. Features **Voice-Activated Commerce (Web Speech API)**, **Real-Time Collaborative Group Shopping**, executive **Recharts visual analytics**, integrated **Google Gemini AI** (conversational shopping assistant & SEO marketing generator), dual payment gateways (**Stripe & Razorpay**), automated **GitHub Actions CI/CD**, multi-provider email dispatch (**Resend HTTPS API / SendGrid / Gmail SMTP** with server log OTP fallback), and **Docker** containerization.
 
 ---
 
@@ -23,10 +23,16 @@ A production-ready, full-stack MERN e-commerce platform engineered with a high-p
 
 - [Architectural Overview](#-architectural-overview)
 - [Key Features](#-key-features)
+  - [1. 🎙️ Voice-Activated Commerce & Navigation](#1-️-voice-activated-commerce--navigation)
+  - [2. 👥 Real-Time Collaborative Group Cart (Socket.io)](#2--real-time-collaborative-group-cart-socketio)
+  - [3. ⚡ Redis Caching Layer (Sub-5ms Performance)](#3--redis-caching-layer-sub-5ms-performance)
+  - [4. 🛍️ Customer Shopping Experience](#4-️-customer-shopping-experience)
+  - [5. 📊 Business Intelligence & Admin Suite](#5--business-intelligence--admin-suite)
+  - [6. 🤖 Generative AI Layer (Google Gemini)](#6--generative-ai-layer-google-gemini)
 - [Tech Stack](#-tech-stack)
 - [Project Structure](#-project-structure)
 - [Quick Start (Local Development)](#-quick-start-local-development)
-- [Database Setup (Local Community vs. Cloud Atlas)](#-database-setup-local-community-vs-cloud-atlas)
+- [Database & Cache Setup (Local vs. Cloud)](#-database--cache-setup-local-vs-cloud)
 - [Docker Setup (1-Command Orchestration)](#-docker-setup-1-command-orchestration)
 - [Environment Variables](#-environment-variables)
 - [API Reference](#-api-reference)
@@ -40,16 +46,20 @@ A production-ready, full-stack MERN e-commerce platform engineered with a high-p
 
 ```mermaid
 flowchart TD
-    Client["React 18 + Vite (Tailwind CSS, Framer Motion, Recharts)"]
+    Client["React 18 + Vite (Tailwind CSS, Web Speech API, Socket.io-client)"]
+    WS["Socket.io WebSocket Server (Room-based State Sync)"]
     Proxy["Nginx / Express Reverse Proxy"]
     API["Node.js + Express REST API (Node 20, ES Modules)"]
+    Redis[("Redis In-Memory Cache (Cache-Aside, Sub-5ms)")]
     DB[("MongoDB: Local Server (27017) or Cloud Atlas (SRV)")]
     Gemini["Google Gemini AI API (gemini-3.6-flash)"]
-    Email["Email Dispatch: Resend (Port 443 HTTPS) / SendGrid / Gmail SMTP / Log Fallback"]
+    Email["Email Dispatch: Resend (Port 443 HTTPS) / SendGrid / Gmail SMTP"]
     Payments["Stripe & Razorpay Gateways"]
 
+    Client <-->|WebSockets (Live Group Cart)| WS
     Client -->|HTTPS / REST| Proxy
     Proxy --> API
+    API <-->|ioredis (Cache-Aside & Invalidation)| Redis
     API -->|Mongoose 8 Auto-TLS Detection| DB
     API -->|SDK| Gemini
     API -->|HTTPS / SMTP| Email
@@ -60,15 +70,30 @@ flowchart TD
 
 ## ✨ Key Features
 
-### 🛍️ Customer Shopping Experience
-- **Resilient Authentication & OTP Verification:** Stateless JWT authentication, bcrypt password hashing, and zero-hang OTP verification. Supports **Resend.com** (HTTPS port 443), SendGrid, Gmail SMTP, and auto-logged console OTP fallbacks for cloud hosting environments with blocked SMTP ports.
+### 1. 🎙️ Voice-Activated Commerce & Navigation
+- **Hands-Free Product Search:** Click the animated microphone icon in the header and speak naturally (e.g. *"Show laptops"*, *"Search wireless headphones"*).
+- **Voice-Guided Page Navigation:** Command the app verbally (*"Go to cart"*, *"View order history"*, *"Open profile"*, *"Go home"*).
+- **Text-to-Speech (TTS) Voice Responses:** ShopHub's AI assistant speaks back audio confirmations in real time using the browser's native `speechSynthesis`.
+- **Multimodal AI Assistant:** Floating chatbot allows both text input and voice conversations with Google Gemini AI.
+
+### 2. 👥 Real-Time Collaborative Group Cart (Socket.io)
+- **Shared Group Shopping Sessions:** Click *"Start Group Order"* to generate an instant 6-character room code or one-click invite URL (`/cart?room=ROOM123`).
+- **Live Bi-Directional State Synchronization:** When User A adds an item, changes quantities, or removes an item, the cart updates live on User B's screen via WebSockets.
+- **Active Member Counter & Real-Time Toast Notifications:** Shows connected peer count and triggers live toast events (*"👥 Gourav added Sony Headphones"*).
+
+### 3. ⚡ Redis Caching Layer (Sub-5ms Performance)
+- **Cache-Aside Architecture:** High-traffic read endpoints (`GET /api/products`, `GET /api/admin/analytics`, `GET /api/products/categories`) are cached in Redis memory with configurable TTLs.
+- **Automated Cache Invalidation:** Whenever an admin creates, updates, or deletes a product, matching cache keys (`products:*`) are purged automatically.
+- **Graceful Degraded Mode:** If Redis is offline, requests seamlessly fall back to MongoDB with zero downtime or user interruption.
+
+### 4. 🛍️ Customer Shopping Experience
+- **Resilient Authentication & OTP Verification:** Stateless JWT authentication, bcrypt password hashing, and zero-hang OTP verification. Supports **Resend.com** (HTTPS port 443), SendGrid, Gmail SMTP, and auto-logged console OTP fallbacks.
 - **Product Discovery:** Instant search with debounce, multi-criteria filtering (category, price range, ratings), sorting, and dynamic product recommendations.
-- **Dynamic Shopping Cart:** Persistent user cart, animated quantity steppers, item exit animations, and promotional coupon engine (`SAVE10`, `SAVE20`, `FLAT50`).
 - **Payment Processing:** Integrated dual gateways supporting **Stripe** and **Razorpay** with backend cryptographic signature verification.
 - **Order Lifecycle:** Self-service order history, live visual order tracker (`OrderTracker`), and order cancellation workflows.
-- **Engagement & Social Proof:** Star ratings, customer review submission, helpful vote counters, and back-in-stock email notifications (`NotifyMe`).
+- **Engagement & Social Proof:** Star ratings, customer review submission, helpful vote counters, and back-in-stock notifications (`NotifyMe`).
 
-### 📊 Business Intelligence & Admin Suite
+### 5. 📊 Business Intelligence & Admin Suite
 - **Visual Analytics Dashboard (Powered by Recharts):**
   - **KPI Metrics:** Total gross revenue, order volume, catalog size, active users, and Average Order Value (AOV).
   - **Revenue & Orders Area Chart:** Gradient timeline tracking daily gross sales.
@@ -79,7 +104,7 @@ flowchart TD
 - **Catalog Management:** Full CRUD operations for products with category tagging, stock management, and image asset links.
 - **User & Order Management:** Role-based access control (Admin/Customer), order status updates, and user role promotion.
 
-### 🤖 Generative AI Layer (Google Gemini)
+### 6. 🤖 Generative AI Layer (Google Gemini)
 - **AI Shopping Assistant:** Conversational chatbot widget on the storefront answering customer queries regarding product features, pricing, and shipping.
 - **AI Product Description Generator:** One-click *"✨ Generate with AI"* button in the Admin Product Editor that generates high-converting, SEO-optimized marketing copy from a product title using `gemini-3.6-flash`.
 
@@ -89,21 +114,24 @@ flowchart TD
 
 ### Frontend
 - **Core:** React 18, Vite 7, React Router DOM v6
+- **Voice Commerce:** Web Speech API (`SpeechRecognition` & `speechSynthesis`)
+- **Real-Time WebSockets:** `socket.io-client`
 - **Styling:** Tailwind CSS, Lucide React icons
 - **Data Visualization:** Recharts 2.x
 - **Animations:** Framer Motion (Page transitions, cart drawer, micro-interactions)
 - **State & Networking:** Context API + useReducer, Axios (with auth interceptors)
-- **Notifications:** React Toastify
 
 ### Backend
-- **Core:** Node.js 20 (ES Modules), Express.js
-- **Database:** MongoDB Community Server (Local) & MongoDB Atlas (Cloud), Mongoose 8 (with TLS auto-detection)
+- **Core:** Node.js 20 (ES Modules), Express.js 5
+- **Real-Time Server:** `socket.io` HTTP Server
+- **In-Memory Cache:** `ioredis` (Redis 7)
+- **Database:** MongoDB Community Server (Local) & MongoDB Atlas (Cloud), Mongoose 9 (with TLS auto-detection)
 - **AI & Cloud Services:** `@google/generative-ai` (Gemini), Resend API, `@sendgrid/mail`, Nodemailer
 - **Security:** Helmet, CORS, Express Rate Limit, CSRF protection
 - **Testing:** Jest, Supertest, MongoDB Memory Server
 
 ### DevOps & Infrastructure
-- **Containerization:** Docker, Docker Compose, Multi-stage Nginx builds
+- **Containerization:** Docker, Docker Compose (MongoDB, Redis, Node.js Backend, Nginx Frontend)
 - **CI/CD:** GitHub Actions (Automated build verification & Jest test suites)
 - **Hosting:** Render (Cloud Native Web Service & Static Site)
 
@@ -113,28 +141,29 @@ flowchart TD
 
 ```
 ecommerce/
-├── docker-compose.yml              # Multi-service local container orchestration
+├── docker-compose.yml              # Multi-service container orchestration (Mongo, Redis, API, Web)
 ├── README.md                       # Master monorepo documentation
 ├── ecommerce-backend/
 │   ├── .github/workflows/ci.yml    # Backend GitHub Actions CI pipeline
-│   ├── config/                     # Database (TLS auto-detect) & config loaders
+│   ├── config/                     # Database (TLS auto-detect), Redis client & configs
 │   ├── controllers/                # Business logic handlers (auth, products, etc.)
-│   ├── middleware/                 # Auth (JWT), Validation (Joi), CSRF, Rate Limit
+│   ├── middleware/                 # Auth (JWT), Cache-aside, Validation (Joi), Rate Limit
 │   ├── models/                     # Mongoose schemas (8 collections: User, Product, Order, etc.)
 │   ├── routes/                     # REST API route definitions
 │   ├── tests/                      # Jest & Supertest integration suites
-│   ├── utils/                      # Email service (Resend/SendGrid/SMTP) & logger helpers
+│   ├── utils/                      # Socket server handler, Resend/SMTP email & loggers
 │   ├── Dockerfile                  # Node 20 Alpine container
-│   ├── server.js                   # Application entry point
+│   ├── server.js                   # Application entry point (Express + Socket.io)
 │   ├── seed.js                     # 11-product database seeder
 │   └── package.json
 └── ecommerce-frontend/
     ├── .github/workflows/ci.yml    # Frontend GitHub Actions CI pipeline
     ├── src/
-    │   ├── components/             # Reusable UI components, Recharts graphs & modals
-    │   ├── context/                # Auth, Cart, Wishlist, Theme contexts
-    │   ├── pages/                  # Route views (Home, AdminDashboard, Login, Profile)
-    │   └── utils/                  # Axios instance & reducers
+    │   ├── components/             # GroupCartBanner, SearchHeader (Voice), Chatbot, Recharts
+    │   ├── context/                # Auth, Cart (Group socket sync), Wishlist, Theme contexts
+    │   ├── hooks/                  # useVoiceCommand custom Web Speech hook
+    │   ├── pages/                  # Route views (Home, AdminDashboard, Login, Cart)
+    │   └── utils/                  # Socket.io client, Axios instance & reducers
     ├── Dockerfile                  # Multi-stage Vite + Nginx container
     ├── nginx.conf                  # Production SPA routing configuration
     └── package.json
@@ -148,7 +177,7 @@ ecommerce/
 - Node.js >= 20.0.0
 - npm >= 10.0.0
 - MongoDB Community Server (local) OR MongoDB Atlas account
-- (Optional) MongoDB Compass for GUI inspection
+- (Optional) Redis (local or Docker container)
 
 ### 1. Clone the Monorepo
 ```bash
@@ -161,9 +190,8 @@ cd ecommerce
 cd ecommerce-backend
 npm install
 
-# Setup environment variables (choose Local MongoDB or Atlas in .env)
-# MONGODB_URI=mongodb://127.0.0.1:27017/ecommerce
-npm run dev             # Starts API on http://localhost:5000
+# Configure MONGODB_URI=mongodb://127.0.0.1:27017/ecommerce in .env
+npm run dev             # Starts API & WebSocket server on http://localhost:5000
 ```
 
 To seed the initial 11 products into your database:
@@ -181,130 +209,35 @@ npm run dev             # Starts SPA on http://localhost:5173
 
 ---
 
-## 🗄️ Database Setup (Local Community vs. Cloud Atlas)
+## 🗄️ Database & Cache Setup (Local vs. Cloud)
 
-Our backend (`config/db.js`) includes **automatic TLS environment detection**:
-- When pointing to `127.0.0.1` or `localhost`, TLS is disabled so local connections are immediate.
-- When pointing to `mongodb+srv://` (Atlas), TLS and SRV resolution are securely enforced.
+### Database (Automatic TLS Detection)
+- Local: Disables TLS for `127.0.0.1:27017` / `localhost`.
+- Cloud: Enforces TLS & SRV for `mongodb+srv://` (MongoDB Atlas).
 
-### Option A: Local MongoDB Community Server (Offline & Free)
-1. Download & install [MongoDB Community Server](https://www.mongodb.com/try/download/community) (runs automatically as a Windows service).
-2. Download & connect via [MongoDB Compass](https://www.mongodb.com/try/download/compass) using `mongodb://localhost:27017`.
-3. In `ecommerce-backend/.env`:
-   ```env
-   MONGODB_URI=mongodb://127.0.0.1:27017/ecommerce
-   ```
-
-### Option B: Cloud MongoDB Atlas (Used for Live Render Production)
-1. In `ecommerce-backend/.env` (or Render Environment Variables):
-   ```env
-   MONGODB_URI=mongodb+srv://<username>:<password>@cluster0.spxsqdl.mongodb.net/ecommerce?retryWrites=true&w=majority&appName=Cluster0
-   ```
+### Cache Service (Redis)
+- Run Redis locally or via Docker (`docker compose up -d redis`).
+- If Redis is absent, ShopHub runs seamlessly in fallback mode.
 
 ---
 
 ## 🐳 Docker Setup (1-Command Orchestration)
 
-Spin up the complete isolated stack (**MongoDB 7**, **Backend API**, and **Frontend Nginx**) locally with a single command:
+Spin up the entire stack (**MongoDB 7**, **Redis 7**, **Backend API**, and **Frontend Nginx**) locally with a single command:
 
 ```bash
 docker compose up -d --build
 ```
 
 - **Frontend Application:** `http://localhost:80`
-- **Backend API:** `http://localhost:5000/api`
+- **Backend API & WebSockets:** `http://localhost:5000/api`
+- **Redis Cache:** `localhost:6379`
 - **MongoDB Database:** `localhost:27017` (stored in persistent volume `mongodb_data`)
 
 To stop containers:
 ```bash
 docker compose down
 ```
-
----
-
-## ⚙️ Environment Variables
-
-### Backend (`ecommerce-backend/.env`)
-```env
-PORT=5000
-NODE_ENV=development
-MONGODB_URI=mongodb://127.0.0.1:27017/ecommerce
-JWT_SECRET=your_super_secret_jwt_key_here
-
-# Email Delivery Options (Supports Resend, SendGrid, or Gmail SMTP)
-RESEND_API_KEY=re_your_resend_api_key   # Recommended for cloud hosting (port 443 HTTPS)
-EMAIL_FROM=gouravdas350@gmail.com
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=465
-EMAIL_USER=gouravdas350@gmail.com
-EMAIL_PASS=your_app_password
-
-# Payment Gateways
-STRIPE_SECRET_KEY=sk_test_...
-STRIPE_PUBLISHABLE_KEY=pk_test_...
-RAZORPAY_KEY_ID=rzp_test_...
-RAZORPAY_KEY_SECRET=your_razorpay_secret
-
-# Google Gemini AI
-GEMINI_API_KEY=your_gemini_api_key
-
-# Admin Defaults
-ADMIN_NAME=Admin User
-ADMIN_EMAIL=admin@shophub.com
-ADMIN_PASSWORD=YourSecurePassword123!
-```
-
-### Frontend (`ecommerce-frontend/.env`)
-```env
-VITE_API_URL=http://localhost:5000/api
-VITE_BACKEND_URL=http://localhost:5000
-VITE_RAZORPAY_KEY_ID=rzp_test_...
-```
-
----
-
-## 📡 API Reference
-
-| Method | Endpoint | Description | Auth |
-|---|---|---|---|
-| `GET` | `/health` | Service health check | Public |
-| `POST` | `/api/auth/register` | User registration & OTP dispatch | Public |
-| `POST` | `/api/auth/verify-otp` | Verify registration OTP | Public |
-| `POST` | `/api/auth/login` | Authenticate user & issue JWT | Public |
-| `POST` | `/api/auth/forgot-password` | Generate password reset OTP | Public |
-| `POST` | `/api/auth/reset-password` | Verify reset OTP & update password | Public |
-| `GET` | `/api/products` | Paginated product list with search, sort & filters | Public |
-| `POST` | `/api/products/generate-description` | **Gemini AI** description generator | Admin |
-| `GET` | `/api/admin/analytics` | **Recharts** aggregated business intelligence | Admin |
-| `GET` | `/api/cart` | Retrieve user cart items | User |
-| `POST` | `/api/orders` | Place order | User |
-| `POST` | `/api/payment/create-order` | Initialize payment gateway order | User |
-| `POST` | `/api/chat` | **Gemini AI** customer support chat | Public |
-
----
-
-## 🧪 Testing & CI/CD
-
-Run backend automated Jest integration tests:
-```bash
-cd ecommerce-backend
-npm test
-```
-
-Continuous Integration is automated via **GitHub Actions**:
-- **Backend Workflow:** Installs dependencies and runs Jest integration tests against an in-memory database.
-- **Frontend Workflow:** Installs dependencies and verifies production Vite builds (`npm run build`).
-
----
-
-## 🔒 Security & Production Hardening
-
-- **Stateless Authentication:** Secure JWTs with expiration and bearer authorization.
-- **Input Validation:** Strict Joi schema validation for all mutating payloads.
-- **HTTP Hardening:** Helmet-configured security headers (HSTS, CSP, X-Frame-Options).
-- **Rate Limiting:** `express-rate-limit` prevents brute-force login and API flooding.
-- **Zero-Block Email Flow:** Non-blocking async email dispatch prevents cloud host SMTP timeouts from failing user HTTP requests.
-- **Database Resiliency:** Dual configuration with automatic TLS detection for both native local MongoDB and cloud-hosted Atlas SRV clusters.
 
 ---
 

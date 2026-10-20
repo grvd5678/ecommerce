@@ -14,6 +14,17 @@ services:
     networks:
       - shophub-network
 
+  redis:
+    image: redis:7-alpine
+    container_name: shophub-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - shophub-network
+
   backend:
     build:
       context: ./ecommerce-backend
@@ -26,11 +37,13 @@ services:
       NODE_ENV: production
       PORT: 5000
       MONGODB_URI: mongodb://mongodb:27017/ecommerce
+      REDIS_URL: redis://redis:6379
       JWT_SECRET: shophub_super_secret_jwt_key_1234567890
       FRONTEND_URL: http://localhost:80
       ALLOWED_ORIGINS: http://localhost:80,http://localhost:5173
     depends_on:
       - mongodb
+      - redis
     networks:
       - shophub-network
 
@@ -46,8 +59,11 @@ services:
       - backend
     networks:
       - shophub-network
+
 volumes:
   mongodb_data:
+    driver: local
+  redis_data:
     driver: local
 
 networks:
